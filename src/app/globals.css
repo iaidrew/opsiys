@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+/* Theme extension (Tailwind v4) */
+@theme {
+  --color-brand-red: #ef4444;
+  --color-brand-dark: #000000;
+  --shadow-glow: 0 0 40px rgba(239, 68, 68, 0.5);
+  /* Animations */
+  --animate-fade-in-up: fade-in-up 0.6s ease-out forwards;
+  --animate-fade-in: fade-in 0.5s ease-out forwards;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Background orb animations */
+@keyframes orb-slow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.6;
+  }
+  33% {
+    transform: translate(30px, -40px) scale(1.05);
+    opacity: 0.8;
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+    opacity: 0.5;
+  }
+}
+
+@keyframes orb-slower {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-40px, -30px) scale(1.1);
+  }
+}
+
+@keyframes orb-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(15px, -20px);
+  }
+  50% {
+    transform: translate(-10px, 10px);
+  }
+  75% {
+    transform: translate(20px, 15px);
+  }
+}
+
+@keyframes grid-pulse {
+  0%, 100% {
+    opacity: 0.02;
+  }
+  50% {
+    opacity: 0.05;
+  }
+}
+
+@keyframes grid-pulse-subtle {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes gradient-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
+  }
+}
+
+@keyframes slide-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animation utility classes */
+.animate-orb-slow {
+  animation: orb-slow 20s ease-in-out infinite;
+}
+
+.animate-orb-slower {
+  animation: orb-slower 25s ease-in-out infinite;
+}
+
+.animate-orb-pulse {
+  animation: orb-pulse 8s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 15s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float 18s ease-in-out 2s infinite;
+}
+
+.animate-grid-pulse {
+  animation: grid-pulse 4s ease-in-out infinite;
+}
+
+.animate-gradient-shimmer {
+  background-size: 200% 200%;
+  animation: gradient-shimmer 4s ease infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.animate-slide-up-fade {
+  animation: slide-up-fade 0.8s ease-out forwards;
+}
+
+/* Base theme */
+html,
+body {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* Premium grid background (behind content) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(239, 68, 68, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(239, 68, 68, 0.06) 1px, transparent 1px);
+  background-size: 100px 100px;
+  z-index: -2;
+  pointer-events: none;
+  animation: grid-pulse-subtle 8s ease-in-out infinite;
+}
+
+/* Soft red glow overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at top right, rgba(239, 68, 68, 0.12), transparent 40%),
+    radial-gradient(circle at bottom left, rgba(239, 68, 68, 0.08), transparent 40%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Hero animation utility classes */
+.animate-hero-badge {
+  animation: fade-in-up 0.6s ease-out 0.1s forwards;
+  opacity: 0;
+}
+
+.animate-hero-heading {
+  animation: fade-in-up 0.6s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+.animate-hero-sub {
+  animation: fade-in-up 0.6s ease-out 0.35s forwards;
+  opacity: 0;
+}
+
+.animate-hero-cta {
+  animation: fade-in-up 0.6s ease-out 0.5s forwards;
+  opacity: 0;
+}
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+  100% { transform: translateY(0px); }
+}
