@@ -1,114 +1,126 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
-export default function StartupProfilePage() {
+export default function ProfilePage() {
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   const [form, setForm] = useState({
     startupName: "",
     industry: "",
     stage: "",
-    teamSize: "",
     revenue: "",
-    funding: "",
-    productScore: 5,
-    marketingScore: 5,
-    salesScore: 5,
-    financeScore: 5,
-    operationsScore: 5,
-    leadershipScore: 5,
+    teamSize: "",
+    targetMarket: "",
+    problemStatement: "",
   });
 
-  const handleChange = (e: any) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const snap = await getDoc(doc(db, "profiles", user.uid));
+
+      if (snap.exists()) {
+        setForm(snap.data() as any);
+      }
+
+      setLoading(false);
+    });
+
+    return () => unsub();
+  }, [router]);
+
+  const handleSave = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      setSaving(true);
+
+      await setDoc(doc(db, "profiles", user.uid), {
+        ...form,
+        updatedAt: new Date(),
+      });
+
+      alert("Profile saved successfully 🚀");
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSubmit = () => {
-    console.log("Profile Data:", form);
-    alert("Profile saved. Next: Assessment Phase 🚀");
-  };
+  if (loading) return <div className="p-10 text-white">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-black text-white p-8">
+
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-5xl mx-auto"
+        className="max-w-4xl mx-auto bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-[0_0_80px_rgba(255,0,0,0.1)]"
       >
-        <h1 className="text-4xl font-bold mb-8">
-          Startup Profile
+        <h1 className="text-3xl font-bold mb-8">
+          Startup Profile 🚀
         </h1>
 
         <div className="grid md:grid-cols-2 gap-6">
 
-          {/* Basic Info */}
-          <Input label="Startup Name" name="startupName" onChange={handleChange} />
-          <Input label="Industry" name="industry" onChange={handleChange} />
-          <Input label="Stage (Idea / MVP / Scaling)" name="stage" onChange={handleChange} />
-          <Input label="Team Size" name="teamSize" onChange={handleChange} />
-          <Input label="Monthly Revenue ($)" name="revenue" onChange={handleChange} />
-          <Input label="Funding Raised ($)" name="funding" onChange={handleChange} />
+          <Input label="Startup Name" name="startupName" form={form} setForm={setForm} />
+          <Input label="Industry" name="industry" form={form} setForm={setForm} />
+          <Input label="Startup Stage" name="stage" form={form} setForm={setForm} />
+          <Input label="Monthly Revenue ($)" name="revenue" form={form} setForm={setForm} />
+          <Input label="Team Size" name="teamSize" form={form} setForm={setForm} />
+          <Input label="Target Market" name="targetMarket" form={form} setForm={setForm} />
 
         </div>
 
-        <div className="mt-10 space-y-6">
-          <h2 className="text-2xl font-semibold">Performance Self-Assessment</h2>
-
-          <Slider label="Product Strength" name="productScore" value={form.productScore} setForm={setForm} />
-          <Slider label="Marketing Strength" name="marketingScore" value={form.marketingScore} setForm={setForm} />
-          <Slider label="Sales Process" name="salesScore" value={form.salesScore} setForm={setForm} />
-          <Slider label="Financial Planning" name="financeScore" value={form.financeScore} setForm={setForm} />
-          <Slider label="Operations" name="operationsScore" value={form.operationsScore} setForm={setForm} />
-          <Slider label="Leadership & Vision" name="leadershipScore" value={form.leadershipScore} setForm={setForm} />
-
+        <div className="mt-6">
+          <label className="text-sm text-gray-400">Problem Statement</label>
+          <textarea
+            rows={4}
+            value={form.problemStatement}
+            onChange={(e) =>
+              setForm({ ...form, problemStatement: e.target.value })
+            }
+            className="w-full mt-2 p-4 rounded-xl bg-black/40 border border-white/10 focus:border-red-500 focus:ring-2 focus:ring-red-500/40 outline-none"
+          />
         </div>
 
         <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleSubmit}
-          className="mt-10 w-full py-4 rounded-2xl bg-red-600 hover:bg-red-500 transition font-semibold text-lg shadow-lg shadow-red-600/30"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={handleSave}
+          disabled={saving}
+          className="mt-8 w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 transition font-semibold shadow-lg shadow-red-600/30"
         >
-          Generate Report
+          {saving ? "Saving..." : "Save Profile"}
         </motion.button>
       </motion.div>
     </div>
   );
 }
 
-/* Reusable Input */
-function Input({ label, name, onChange }: any) {
+function Input({ label, name, form, setForm }: any) {
   return (
     <div>
-      <label className="block mb-2 text-sm text-gray-400">{label}</label>
+      <label className="text-sm text-gray-400">{label}</label>
       <input
-        name={name}
-        onChange={onChange}
-        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-red-500 focus:ring-2 focus:ring-red-500/40 outline-none"
-      />
-    </div>
-  );
-}
-
-/* Slider Component */
-function Slider({ label, name, value, setForm }: any) {
-  return (
-    <div>
-      <label className="block mb-2 text-sm text-gray-400">
-        {label}: {value}/10
-      </label>
-      <input
-        type="range"
-        min="1"
-        max="10"
-        value={value}
-        onChange={(e) =>
-          setForm((prev: any) => ({
-            ...prev,
-            [name]: Number(e.target.value),
-          }))
-        }
-        className="w-full accent-red-600"
+        value={form[name]}
+        onChange={(e) => setForm({ ...form, [name]: e.target.value })}
+        className="w-full mt-2 p-4 rounded-xl bg-black/40 border border-white/10 focus:border-red-500 focus:ring-2 focus:ring-red-500/40 outline-none"
       />
     </div>
   );
