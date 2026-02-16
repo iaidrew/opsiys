@@ -54,64 +54,81 @@ export default function LoginPage() {
   const handleLogin = async () => {
     try {
       setLoading(true);
-      setError("");
-
+  
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
         password
       );
-
-      const snap = await getDoc(
-        doc(db, "users", userCredential.user.uid)
-      );
-
-      const role = snap.data()?.role;
-
+  
+      const userRef = doc(db, "users", userCredential.user.uid);
+      const snap = await getDoc(userRef);
+  
+      // If somehow user doc missing → create it
+      if (!snap.exists()) {
+        await setDoc(userRef, {
+          name: userCredential.user.displayName || "",
+          email: userCredential.user.email,
+          role: "USER",
+          createdAt: new Date(),
+        });
+  
+        router.replace("/dashboard");
+        return;
+      }
+  
+      const role = snap.data()?.role || "USER";
+  
       if (role === "ADMIN") {
         router.replace("/admin");
       } else {
         router.replace("/dashboard");
       }
+  
     } catch (err: any) {
-      setError(err.message.replace("Firebase:", ""));
+      alert(err.message);
     } finally {
       setLoading(false);
     }
   };
-
+  
   /* -------------------------------
      🌐 GOOGLE LOGIN
   --------------------------------*/
   const handleGoogle = async () => {
     try {
-      setError("");
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-
+  
       const userRef = doc(db, "users", result.user.uid);
       const snap = await getDoc(userRef);
-
+  
+      // If first time login → create user doc
       if (!snap.exists()) {
         await setDoc(userRef, {
-          name: result.user.displayName,
+          name: result.user.displayName || "",
           email: result.user.email,
           role: "USER",
           createdAt: new Date(),
         });
+  
+        router.replace("/dashboard");
+        return;
       }
-
-      const role = snap.exists() ? snap.data().role : "USER";
-
+  
+      const role = snap.data()?.role || "USER";
+  
       if (role === "ADMIN") {
         router.replace("/admin");
       } else {
         router.replace("/dashboard");
       }
+  
     } catch (err: any) {
-      setError(err.message.replace("Firebase:", ""));
+      alert(err.message);
     }
   };
+  
 
   /* -------------------------------
      🔄 PASSWORD RESET
