@@ -1,101 +1,118 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
-const questions = [
-  {
-    category: "Product",
-    question: "Do you have clear product-market fit?",
-  },
-  {
-    category: "Market",
-    question: "Do you deeply understand your target audience?",
-  },
-  {
-    category: "Revenue",
-    question: "Is your revenue model predictable and scalable?",
-  },
-  {
-    category: "Operations",
-    question: "Are your processes documented and optimized?",
-  },
-  {
-    category: "Growth",
-    question: "Do you have a consistent acquisition channel?",
-  },
-  {
-    category: "Founder",
-    question: "Do you track KPIs weekly and make data-driven decisions?",
-  },
+const categories = [
+  "Product & Innovation",
+  "Marketing & Growth",
+  "Revenue & Monetization",
+  "Operations & Execution",
+  "Leadership & Vision",
 ];
 
 export default function AssessmentPage() {
   const router = useRouter();
-  const [answers, setAnswers] = useState<number[]>(Array(questions.length).fill(3));
+  const [answers, setAnswers] = useState<{ [key: string]: number }>({});
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (index: number, value: number) => {
-    const newAnswers = [...answers];
-    newAnswers[index] = value;
-    setAnswers(newAnswers);
+  const handleSelect = (questionId: string, value: number) => {
+    setAnswers({ ...answers, [questionId]: value });
   };
 
-  const handleSubmit = () => {
-    const scores: Record<string, number> = {};
+  const handleSubmit = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
 
-    questions.forEach((q, i) => {
-      if (!scores[q.category]) scores[q.category] = 0;
-      scores[q.category] += answers[i];
+    setLoading(true);
+
+    // Calculate category scores
+    const scores: any = {};
+    categories.forEach((cat) => {
+      const catAnswers = Object.entries(answers)
+        .filter(([key]) => key.startsWith(cat))
+        .map(([, value]) => value as number);
+
+      const avg =
+        catAnswers.reduce((a, b) => a + b, 0) /
+        (catAnswers.length || 1);
+
+      scores[cat] = Math.round(avg);
     });
 
-    localStorage.setItem("assessmentScores", JSON.stringify(scores));
-    router.push("/dashboard/report");
+    await setDoc(doc(db, "assessments", user.uid), {
+      answers,
+      scores,
+      createdAt: new Date(),
+    });
+
+    setLoading(false);
+    router.push("/dashboard/analytics");
   };
 
   return (
-    <div className="space-y-10">
-
-      <motion.h1
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-4xl font-bold"
+    <div className="min-h-screen bg-black text-white p-8">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="max-w-5xl mx-auto"
       >
-        Growth Intelligence Assessment
-      </motion.h1>
+        <h1 className="text-4xl font-bold mb-8">
+          Startup Intelligence Assessment 🚀
+        </h1>
 
-      <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl space-y-8">
+        {categories.map((category, i) => (
+          <div key={category} className="mb-10">
+            <h2 className="text-xl font-semibold mb-4">
+              {category}
+            </h2>
 
-        {questions.map((q, index) => (
-          <div key={index} className="space-y-3">
-            <p className="text-lg font-medium">{q.question}</p>
+            {[1, 2, 3, 4, 5].map((q) => {
+              const questionId = `${category}-Q${q}`;
 
-            <div className="flex justify-between text-sm text-gray-400">
-              <span>Weak</span>
-              <span>Strong</span>
-            </div>
+              return (
+                <div
+                  key={questionId}
+                  className="mb-4 p-4 bg-white/5 border border-white/10 rounded-xl"
+                >
+                  <p className="mb-3">
+                    Question {q}: How strong is your {category.toLowerCase()} in this area?
+                  </p>
 
-            <input
-              type="range"
-              min="1"
-              max="5"
-              value={answers[index]}
-              onChange={(e) => handleChange(index, Number(e.target.value))}
-              className="w-full accent-red-600"
-            />
+                  <div className="flex gap-3">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button
+                        key={value}
+                        onClick={() =>
+                          handleSelect(questionId, value)
+                        }
+                        className={`px-4 py-2 rounded-lg border ${
+                          answers[questionId] === value
+                            ? "bg-red-600 border-red-600"
+                            : "border-white/20"
+                        }`}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ))}
 
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
+        <button
           onClick={handleSubmit}
-          className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 transition font-semibold shadow-lg shadow-red-600/30"
+          disabled={loading}
+          className="w-full py-3 bg-red-600 rounded-xl font-semibold hover:bg-red-500 transition"
         >
-          Generate Founder Report
-        </motion.button>
-
-      </div>
+          {loading ? "Analyzing..." : "Generate My Intelligence Report"}
+        </button>
+      </motion.div>
     </div>
   );
 }
