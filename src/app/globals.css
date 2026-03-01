@@ -10,6 +10,20 @@
   --animate-fade-in: fade-in 0.5s ease-out forwards;
 }
 
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -196,11 +210,13 @@ body::after {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(circle at top right, rgba(239, 68, 68, 0.12), transparent 40%),
-    radial-gradient(circle at bottom left, rgba(239, 68, 68, 0.08), transparent 40%);
+    radial-gradient(circle at 70% 20%, rgba(139, 92, 246, 0.12), transparent 40%),
+    radial-gradient(circle at 20% 80%, rgba(239, 68, 68, 0.12), transparent 40%),
+    radial-gradient(circle at center, rgba(255,255,255,0.02), transparent 60%);
   z-index: -1;
   pointer-events: none;
 }
+
 
 /* Hero animation utility classes */
 .animate-hero-badge {

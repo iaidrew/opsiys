@@ -8,41 +8,81 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
+interface ProfileData {
+  fullName?: string;
+  startupName?: string;
+  industry?: string;
+  stage?: string;
+  revenue?: string;
+  teamSize?: string;
+  website?: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [profileCompletion, setProfileCompletion] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) {
         router.replace("/login");
-      } else {
-        setUser(u);
+        return;
+      }
 
-        // 🔥 Check profile completion
+      setUser(u);
+
+      try {
         const snap = await getDoc(doc(db, "profiles", u.uid));
+
         if (snap.exists()) {
-          const data = snap.data();
-          const fields = Object.values(data).filter(Boolean);
-          const percentage = Math.min(
-            100,
-            Math.round((fields.length / 7) * 100)
+          const data = snap.data() as ProfileData;
+
+          const requiredFields: (keyof ProfileData)[] = [
+            "fullName",
+            "startupName",
+            "industry",
+            "stage",
+            "revenue",
+            "teamSize",
+            "website",
+          ];
+
+          const filled = requiredFields.filter(
+            (field) => data[field] && data[field] !== ""
           );
+
+          const percentage = Math.round(
+            (filled.length / requiredFields.length) * 100
+          );
+
           setProfileCompletion(percentage);
         }
+      } catch (error) {
+        console.error("Profile fetch error:", error);
+      } finally {
+        setLoading(false);
       }
     });
 
     return () => unsub();
   }, [router]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center text-white">
+        Loading dashboard...
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
+    <div className="relative min-h-screen bg-black text-white p-8 overflow-hidden">
 
-      {/* 🔥 Animated Background Glow */}
+      {/* Background Glow */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,0,0,0.15),transparent_40%)] pointer-events-none"></div>
 
       <motion.div
@@ -60,12 +100,13 @@ export default function DashboardPage() {
           Your startup intelligence command center
         </p>
 
-        {/* Profile Completion Bar */}
+        {/* Profile Completion */}
         <div className="mb-10">
           <div className="flex justify-between text-sm mb-2">
             <span>Profile Completion</span>
             <span>{profileCompletion}%</span>
           </div>
+
           <div className="w-full bg-white/10 rounded-full h-3">
             <motion.div
               initial={{ width: 0 }}
@@ -76,9 +117,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Dashboard Cards */}
+        {/* Main Cards */}
         <div className="grid md:grid-cols-3 gap-6">
-
           <DashboardCard
             title="Startup Profile"
             description="Complete and manage your startup identity."
@@ -96,12 +136,10 @@ export default function DashboardPage() {
             description="Visualize metrics, strengths & weaknesses."
             link="/dashboard/analytics"
           />
-
         </div>
 
         {/* Secondary Section */}
         <div className="grid md:grid-cols-2 gap-6 mt-8">
-
           <DashboardCard
             title="AI Report Generator"
             description="Generate a full founder performance report."
@@ -110,17 +148,26 @@ export default function DashboardPage() {
 
           <DashboardCard
             title="AI Tool Recommendations"
-            description="Discover 5 free & paid tools tailored to you."
+            description="Discover tailored free & paid tools."
             link="/dashboard/recommendations"
           />
-
         </div>
       </motion.div>
     </div>
   );
 }
 
-function DashboardCard({ title, description, link }: any) {
+interface DashboardCardProps {
+  title: string;
+  description: string;
+  link: string;
+}
+
+function DashboardCard({
+  title,
+  description,
+  link,
+}: DashboardCardProps) {
   return (
     <Link href={link}>
       <motion.div

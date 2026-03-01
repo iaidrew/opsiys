@@ -6,7 +6,7 @@ import Image from "next/image";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
-
+import StartupSwitcher from "@/components/dashboard/StartupSwitcher";
 import logo from "../../../assets/images/OPSIYSLOGO.png";
 
 export default function Navbar() {
@@ -18,41 +18,47 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-black/80 backdrop-blur border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+    <nav className="fixed top-0 w-full z-50 backdrop-blur-xl bg-black/70 border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-8 h-20 flex items-center justify-between">
 
         {/* Logo */}
         <Link href="/" className="flex items-center">
           <Image
             src={logo}
             alt="Opsiys Logo"
-            height={80}
-            width={150}
-            className="h-20 w-auto object-contain"
+            width={140}
+            height={60}
+            className="h-10 w-auto"
           />
         </Link>
 
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
-          <Link href="/about" className="hover:text-white">About</Link>
-          <Link href="/tools" className="hover:text-white">Tools</Link>
-          <Link href="/ai" className="hover:text-white">AI</Link>
-          <Link href="/store" className="hover:text-white">Store</Link>
+        {/* Center Nav */}
+        <div className="hidden md:flex gap-10 text-sm text-gray-400">
+          <Link href="/about" className="hover:text-white transition">About</Link>
+          <Link href="/tools" className="hover:text-white transition">Tools</Link>
+          <Link href="/ai" className="hover:text-white transition">AI</Link>
+          <Link href="/store" className="hover:text-white transition">Store</Link>
         </div>
 
-        {/* Auth Section */}
+        {/* Auth */}
         {user ? (
           <div className="hidden md:flex items-center gap-4">
+
+            {/* Startup Switcher */}
+            <StartupSwitcher />
+
+            {/* Dashboard Button */}
             <Link
-              href="/dashboard"
-              className="px-4 py-2 rounded-full bg-white text-black text-sm font-semibold"
+              href="/dashboard/profile"
+              className="px-5 py-2 rounded-full bg-white text-black text-sm font-semibold hover:bg-red-500 hover:text-white transition"
             >
               Dashboard
             </Link>
 
+            {/* Logout */}
             <button
               onClick={handleLogout}
-              className="px-4 py-2 rounded-full border border-white/20 text-sm hover:border-red-500"
+              className="px-5 py-2 rounded-full border border-white/10 text-sm hover:border-red-500 transition"
             >
               Logout
             </button>
@@ -60,19 +66,11 @@ export default function Navbar() {
         ) : (
           <Link
             href="/login"
-            className="hidden md:block px-4 py-2 rounded-full bg-white text-black text-sm font-semibold hover:bg-red-500 hover:text-white transition"
+            className="px-5 py-2 rounded-full bg-white text-black text-sm font-semibold hover:bg-red-500 hover:text-white transition"
           >
             Login
           </Link>
         )}
-
-        {/* Mobile Button */}
-        <button
-          onClick={() => setOpen(!open)}
-          className="md:hidden text-white text-2xl"
-        >
-          ☰
-        </button>
       </div>
     </nav>
   );

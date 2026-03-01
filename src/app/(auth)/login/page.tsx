@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
-  onAuthStateChanged,
   sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -24,36 +23,12 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false);
 
   /* -------------------------------
-     🔥 AUTH STATE REDIRECT
-  --------------------------------*/
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
-
-      const snap = await getDoc(doc(db, "users", user.uid));
-
-      if (snap.exists()) {
-        const role = snap.data().role;
-
-        if (role === "ADMIN") {
-          router.replace("/admin");
-        } else {
-          router.replace("/dashboard");
-        }
-      } else {
-        router.replace("/dashboard");
-      }
-    });
-
-    return () => unsub();
-  }, [router]);
-
-  /* -------------------------------
-     🔐 EMAIL LOGIN
+     🔐 EMAIL LOGIN (SSR READY)
   --------------------------------*/
   const handleLogin = async () => {
     try {
       setLoading(true);
+      setError("");
   
       const userCredential = await signInWithEmailAndPassword(
         auth,
@@ -61,75 +36,55 @@ export default function LoginPage() {
         password
       );
   
-      const userRef = doc(db, "users", userCredential.user.uid);
-      const snap = await getDoc(userRef);
+      const idToken = await userCredential.user.getIdToken(true);
   
-      // If somehow user doc missing → create it
-      if (!snap.exists()) {
-        await setDoc(userRef, {
-          name: userCredential.user.displayName || "",
-          email: userCredential.user.email,
-          role: "USER",
-          createdAt: new Date(),
-        });
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
   
-        router.replace("/dashboard");
-        return;
+      if (!res.ok) {
+        throw new Error("Session creation failed");
       }
   
-      const role = snap.data()?.role || "USER";
-  
-      if (role === "ADMIN") {
-        router.replace("/admin");
-      } else {
-        router.replace("/dashboard");
-      }
+      router.replace("/dashboard/profile");
   
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
-  
+
   /* -------------------------------
-     🌐 GOOGLE LOGIN
+     🌐 GOOGLE LOGIN (SSR READY)
   --------------------------------*/
   const handleGoogle = async () => {
     try {
+      setError("");
+  
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
   
-      const userRef = doc(db, "users", result.user.uid);
-      const snap = await getDoc(userRef);
+      const idToken = await result.user.getIdToken(true);
   
-      // If first time login → create user doc
-      if (!snap.exists()) {
-        await setDoc(userRef, {
-          name: result.user.displayName || "",
-          email: result.user.email,
-          role: "USER",
-          createdAt: new Date(),
-        });
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
   
-        router.replace("/dashboard");
-        return;
+      if (!res.ok) {
+        throw new Error("Session creation failed");
       }
   
-      const role = snap.data()?.role || "USER";
-  
-      if (role === "ADMIN") {
-        router.replace("/admin");
-      } else {
-        router.replace("/dashboard");
-      }
+      router.replace("/dashboard/profile");
   
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message);
     }
   };
-  
-
   /* -------------------------------
      🔄 PASSWORD RESET
   --------------------------------*/
@@ -151,13 +106,11 @@ export default function LoginPage() {
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-black overflow-hidden">
 
-      {/* 🔥 Animated Background */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,0,0,0.25),transparent_40%),radial-gradient(circle_at_70%_70%,rgba(255,0,0,0.15),transparent_40%)] animate-pulse"></div>
 
       <div className="absolute w-96 h-96 bg-red-600/20 blur-[120px] rounded-full top-10 left-10 animate-[float_8s_ease-in-out_infinite]"></div>
       <div className="absolute w-96 h-96 bg-red-600/10 blur-[120px] rounded-full bottom-10 right-10 animate-[float_10s_ease-in-out_infinite]"></div>
 
-      {/* 🔥 Glass Card */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -186,7 +139,6 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          {/* 🔥 Error Message */}
           <AnimatePresence>
             {error && (
               <motion.p
@@ -200,7 +152,6 @@ export default function LoginPage() {
             )}
           </AnimatePresence>
 
-          {/* 🔥 Reset Confirmation */}
           {resetSent && (
             <p className="text-green-400 text-sm">
               Password reset email sent 🚀
