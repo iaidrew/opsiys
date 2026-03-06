@@ -9,8 +9,8 @@ export function generateStartupReport(profile: any) {
       team: calculateTeam(profile),
     };
   
-    const strengths = [];
-    const weaknesses = [];
+    const strengths: string[] = [];
+    const weaknesses: string[] = [];
   
     Object.entries(scores).forEach(([key, value]) => {
       if (value >= 7) strengths.push(key);
