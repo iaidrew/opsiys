@@ -40,18 +40,22 @@ export default function LoginPage() {
   
       const res = await fetch("/api/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ idToken }),
       });
   
+      const data = await res.json();
+  
       if (!res.ok) {
-        throw new Error("Session creation failed");
+        throw new Error(data.error || "Login failed");
       }
   
       router.replace("/dashboard/profile");
   
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Login error");
     } finally {
       setLoading(false);
     }

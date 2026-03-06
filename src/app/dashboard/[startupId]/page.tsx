@@ -158,7 +158,7 @@ export default async function StartupDashboard(props: {
 
         /* ── Gradient text ── */
         .db-grad {
-          background: linear-gradient(125deg, #ef4444 0%, #fb923c 100%);
+          background: linear-gradient(125deg, #ef4444 0%, #dc2626 100%);
           -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
       `}</style>

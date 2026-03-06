@@ -74,7 +74,7 @@ export default function SubmitToolPage() {
 
         .sp-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; line-height: 1.05;
           letter-spacing: -0.025em; color: #fff; margin-bottom: 10px; }
-        .sp-grad { background: linear-gradient(125deg, #ef4444 0%, #fb923c 100%);
+        .sp-grad { background: linear-gradient(125deg, #ef4444 0%, #dc2626 100%);
           -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .sp-subtitle { color: #71717a; font-size: 14px; line-height: 1.7; font-weight: 300; margin-bottom: 40px; }
 
