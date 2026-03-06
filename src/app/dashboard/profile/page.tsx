@@ -3,12 +3,22 @@ import { redirect } from "next/navigation";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import Link from "next/link";
 
-export default async function ProfilePage() {
+/**
+ * Firestore Startup Type
+ */
+type Startup = {
+  id: string;
+  name?: string;
+  industry?: string;
+};
 
+export default async function ProfilePage() {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
 
-  if (!session?.value) redirect("/login");
+  if (!session?.value) {
+    redirect("/login");
+  }
 
   let decoded;
 
@@ -29,15 +39,19 @@ export default async function ProfilePage() {
     .collection("startups")
     .get();
 
-  const startups = startupsSnap.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  }));
+  const startups: Startup[] = startupsSnap.docs.map((doc) => {
+    const data = doc.data() as Omit<Startup, "id">;
+
+    return {
+      id: doc.id,
+      name: data.name ?? "Untitled Startup",
+      industry: data.industry ?? "No industry specified",
+    };
+  });
 
   return (
     <div className="min-h-screen bg-black text-white px-10 py-20">
       <div className="max-w-6xl mx-auto">
-
         <h1 className="text-4xl font-black mb-12">
           Startup Profiles
         </h1>
@@ -65,7 +79,6 @@ export default async function ProfilePage() {
             + Create New Startup
           </Link>
         </div>
-
       </div>
     </div>
   );

@@ -1,28 +1,21 @@
-import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { message, startupId } = body;
+    const { message, startupId, mode = "general" } = body;
 
     if (!message || !startupId) {
-      return NextResponse.json(
-        { error: "Missing message or startupId." },
-        { status: 400 }
-      );
+      return new Response("Missing data", { status: 400 });
     }
 
-    /* ---------------- AUTH ---------------- */
+    /* ---------- AUTH ---------- */
     const cookieStore = await cookies();
     const session = cookieStore.get("session");
 
     if (!session?.value) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return new Response("Unauthorized", { status: 401 });
     }
 
     const decoded = await adminAuth.verifySessionCookie(
@@ -32,8 +25,75 @@ export async function POST(req: Request) {
 
     const userId = decoded.uid;
 
-    /* ---------------- OPENROUTER CALL ---------------- */
-    const response = await fetch(
+    /* ---------- LOAD MEMORY (last 10 messages) ---------- */
+    const historySnap = await adminDb
+      .collection("users")
+      .doc(userId)
+      .collection("startups")
+      .doc(startupId)
+      .collection("advisorMessages")
+      .orderBy("createdAt", "asc")
+      .limitToLast(10)
+      .get();
+
+    const history = historySnap.docs.map((doc) => ({
+      role: doc.data().role,
+      content: doc.data().content,
+    }));
+
+    /* ---------- MODE LOGIC ---------- */
+    let modeInstruction = "";
+
+    switch (mode) {
+      case "growth":
+        modeInstruction =
+          "Focus on aggressive growth strategies, customer acquisition, revenue expansion and market dominance.";
+        break;
+
+      case "risk":
+        modeInstruction =
+          "Focus on risk mitigation, operational weaknesses, financial sustainability and downside protection.";
+        break;
+
+      case "fundraising":
+        modeInstruction =
+          "Respond like an elite fundraising advisor. Think investor-first, valuation strategy, pitch optimization and capital strategy.";
+        break;
+
+      case "scaling":
+        modeInstruction =
+          "Focus on systems, automation, hiring, delegation, infrastructure and scalability.";
+        break;
+
+      default:
+        modeInstruction =
+          "Act as a balanced strategic startup advisor.";
+    }
+
+    /* ---------- BUILD CONVERSATION ---------- */
+    const conversation = [
+      {
+        role: "system",
+        content: `
+You are a professional AI strategic advisor.
+
+Current Mode: ${mode}
+
+${modeInstruction}
+
+Maintain context from previous conversation.
+Respond in structured Markdown using headings, bullet points and clarity.
+        `,
+      },
+      ...history,
+      {
+        role: "user",
+        content: message,
+      },
+    ];
+
+    /* ---------- CALL OPENROUTER WITH STREAM ---------- */
+    const aiResponse = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
       {
         method: "POST",
@@ -44,75 +104,86 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           model: "arcee-ai/trinity-large-preview:free",
           temperature: 0.4,
-          messages: [
-            {
-              role: "system",
-              content: `
-You are a highly intelligent strategic advisor.
-Respond clearly using Markdown formatting.
-Use headings, bullet points and structure.
-              `,
-            },
-            {
-              role: "user",
-              content: message,
-            },
-          ],
+          stream: true,
+          messages: conversation,
         }),
       }
     );
 
-    /* 🚨 CRITICAL CHECK */
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (!aiResponse.ok || !aiResponse.body) {
+      const errorText = await aiResponse.text();
       console.error("OpenRouter Error:", errorText);
-
-      return NextResponse.json(
-        { error: "AI provider error." },
-        { status: 500 }
-      );
+      return new Response("AI Provider Error", { status: 500 });
     }
 
-    const data = await response.json();
+    const reader = aiResponse.body.getReader();
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
 
-    const reply =
-      data?.choices?.[0]?.message?.content;
+    let fullReply = "";
 
-    if (!reply) {
-      return NextResponse.json(
-        { error: "No AI response." },
-        { status: 500 }
-      );
-    }
+    const stream = new ReadableStream({
+      async start(controller) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-    /* ---------------- SAVE MESSAGES ---------------- */
-    const basePath = adminDb
-      .collection("users")
-      .doc(userId)
-      .collection("startups")
-      .doc(startupId)
-      .collection("advisorMessages");
+          const chunk = decoder.decode(value);
+          const lines = chunk
+            .split("\n")
+            .filter((line) => line.startsWith("data:"));
 
-    await basePath.add({
-      role: "user",
-      content: message,
-      createdAt: new Date(),
+          for (const line of lines) {
+            const jsonStr = line.replace("data:", "").trim();
+            if (jsonStr === "[DONE]") continue;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const token =
+                parsed.choices?.[0]?.delta?.content;
+
+              if (token) {
+                fullReply += token;
+                controller.enqueue(
+                  encoder.encode(token)
+                );
+              }
+            } catch (err) {}
+          }
+        }
+
+        controller.close();
+
+        /* ---------- SAVE MEMORY ---------- */
+        const basePath = adminDb
+          .collection("users")
+          .doc(userId)
+          .collection("startups")
+          .doc(startupId)
+          .collection("advisorMessages");
+
+        await basePath.add({
+          role: "user",
+          content: message,
+          createdAt: new Date(),
+        });
+
+        await basePath.add({
+          role: "assistant",
+          content: fullReply,
+          createdAt: new Date(),
+        });
+      },
     });
 
-    await basePath.add({
-      role: "assistant",
-      content: reply,
-      createdAt: new Date(),
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+      },
     });
-
-    return NextResponse.json({ reply });
 
   } catch (error) {
-    console.error("Advisor API Error:", error);
-
-    return NextResponse.json(
-      { error: "Advisor failed." },
-      { status: 500 }
-    );
+    console.error("Advisor Route Error:", error);
+    return new Response("Server Error", { status: 500 });
   }
 }

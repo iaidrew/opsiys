@@ -5,10 +5,11 @@ import Features from "@/components/home/Features";
 import CTA from "@/components/home/CTA";
 import LogoStrip from "@/components/home/LogoStrip";
 
+
 export default function HomePage() {
   return (
     <>
-      <Hero />
+      <Hero /> <br /> <br />
       <LogoStrip/>
       <SystemPreview />
       <Stats />

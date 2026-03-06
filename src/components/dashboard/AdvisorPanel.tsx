@@ -17,117 +17,155 @@ export default function AdvisorPanel({
   startupId,
   initialMessages = [],
 }: Props) {
+
   const [messages, setMessages] =
-    useState<Message[]>(initialMessages || []);
+    useState<Message[]>(initialMessages);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mode, setMode] = useState("general");
 
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const chatRef = useRef<HTMLDivElement | null>(null);
 
-  /* ---------------- AUTO SCROLL ---------------- */
+  /* ---------- INTERNAL SCROLL ---------- */
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+    const el = chatRef.current;
+    if (!el) return;
 
-  /* ---------------- ASK ADVISOR ---------------- */
+    const isNearBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+
+    if (isNearBottom) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [messages]);
+
   const askAdvisor = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const userMessage: Message = {
       role: "user",
-      content: input,
+      content: input.trim(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    setInput("");
     setLoading(true);
     setError("");
-    setInput("");
 
     try {
       const res = await fetch("/api/advisor", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMessage.content,
           startupId,
+          mode,
         }),
       });
 
-      const data = await res.json();
+      if (!res.body) throw new Error("No stream");
 
-      if (!res.ok || !data.reply) {
-        throw new Error(data.error || "AI error");
-      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
 
-      const assistantMessage: Message = {
+      let assistantMessage: Message = {
         role: "assistant",
-        content: data.reply,
+        content: "",
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
 
-    } catch (err: any) {
-      setError("Failed to get response from advisor.");
-    }
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-    setLoading(false);
+        const chunk = decoder.decode(value);
+        assistantMessage.content += chunk;
+
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...assistantMessage,
+          };
+          return updated;
+        });
+      }
+
+    } catch (err) {
+      console.error(err);
+      setError("Streaming failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="bg-zinc-950 border border-white/10 rounded-2xl p-8 space-y-6">
 
-      <h2 className="text-xl font-semibold">
-        AI Strategic Advisor
-      </h2>
+      {/* HEADER + MODE SELECTOR */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-white">
+          AI Strategic Advisor
+        </h2>
 
-      {/* CHAT HISTORY */}
-      <div className="space-y-6 max-h-[450px] overflow-y-auto pr-2">
+        <select
+          value={mode}
+          onChange={(e) => setMode(e.target.value)}
+          className="bg-black border border-white/10 rounded-lg px-3 py-1 text-sm"
+        >
+          <option value="general">General Advisor</option>
+          <option value="growth">Growth Mode</option>
+          <option value="risk">Risk Mitigation</option>
+          <option value="fundraising">Fundraising</option>
+          <option value="scaling">Scaling</option>
+        </select>
+      </div>
 
+      {/* CHAT AREA */}
+      <div
+        ref={chatRef}
+        className="space-y-6 h-[450px] overflow-y-auto pr-2"
+      >
         {messages.length === 0 && (
           <div className="text-gray-500 text-sm">
-            Start a conversation with your AI advisor.
+            Start a conversation.
           </div>
         )}
 
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={
+            className={`flex ${
               msg.role === "user"
-                ? "flex justify-end"
-                : "flex justify-start"
-            }
+                ? "justify-end"
+                : "justify-start"
+            }`}
           >
             <div
-              className={
+              className={`rounded-2xl max-w-[75%] ${
                 msg.role === "user"
-                  ? "bg-red-600 text-white px-4 py-2 rounded-2xl max-w-[75%]"
-                  : "bg-zinc-800 px-5 py-4 rounded-2xl max-w-[75%]"
-              }
+                  ? "bg-red-600 text-white px-4 py-2"
+                  : "bg-zinc-800 text-gray-200 px-5 py-4"
+              }`}
             >
-                <div className="prose prose-invert max-w-none text-sm">
-                    <ReactMarkdown>
-                        {msg.content}
-                        </ReactMarkdown>
-                        </div>
-              
+              <div className="prose prose-invert max-w-none text-sm">
+                <ReactMarkdown>
+                  {msg.content}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         ))}
 
         {loading && (
-          <div className="text-left text-gray-400 text-sm">
-            Thinking...
+          <div className="text-gray-400 text-sm animate-pulse">
+            Thinking in {mode} mode...
           </div>
         )}
-
-        <div ref={bottomRef} />
       </div>
 
-      {/* ERROR */}
       {error && (
         <div className="text-red-400 text-sm">
           {error}
@@ -152,7 +190,6 @@ export default function AdvisorPanel({
           {loading ? "Thinking..." : "Send"}
         </button>
       </div>
-
     </div>
   );
 }

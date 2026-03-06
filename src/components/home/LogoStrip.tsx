@@ -1,38 +1,40 @@
 "use client";
 
+import OPSIYSLogo from "../../../assets/images/OPSIYSLOGO.png";
+import Sequoia from "../../../assets/images/sequoia.png";
+import A16z from "../../../assets/images/A16z.svg";
+import Accellogo from "../../../assets/images/Accellogo.png";
+import lightspeed from "../../../assets/images/lightspeed.png";
+import firstround from "../../../assets/images/firstround.png";
+
 export default function LogoStrip() {
   const logos = [
-    "D:\opsiys\assets\images\images (2).png",
-    "Sequoia Capital",
-    "a16z",
-    "Accel",
-    "Lightspeed",
-    "First Round",
-    "General Catalyst",
-    "Brex",
-    "Rippling",
-    "Deel",
-    "Linear",
-    "Webflow",
-    "Vercel",
-    "Figma",
-    "Notion",
+    OPSIYSLogo,
+    Sequoia,
+    A16z,
+    Accellogo,
+    lightspeed,
+    firstround,
   ];
 
   return (
-    <section className="relative py-20 border-y border-white/5 overflow-hidden bg-black">
+    <section className="relative py-8 overflow-hidden">
       
-      {/* Fade edges */}
-      <div className="absolute left-0 top-0 h-full w-32 bg-gradient-to-r from-black to-transparent z-10" />
-      <div className="absolute right-0 top-0 h-full w-32 bg-gradient-to-l from-black to-transparent z-10" />
+      {/* Optional fade edges (remove if you want ultra clean) */}
+      <div className="absolute left-0 top-0 h-full w-40 bg-gradient-to-r from-black to-transparent pointer-events-none" />
+      <div className="absolute right-0 top-0 h-full w-40 bg-gradient-to-l from-black to-transparent pointer-events-none" />
 
-      <div className="whitespace-nowrap flex animate-marquee gap-20 text-lg md:text-xl font-semibold tracking-wide text-gray-500">
+      <div className="flex items-center whitespace-nowrap animate-marquee gap-20">
         {logos.concat(logos).map((logo, i) => (
           <div
             key={i}
-            className="opacity-70 hover:opacity-100 hover:text-white transition duration-300"
+            className="flex items-center justify-center min-w-[220px]"
           >
-            {logo}
+            <img
+              src={logo.src}
+              alt="Company Logo"
+              className="h-24 md:h-28 lg:h-32 w-auto object-contain opacity-80 hover:opacity-100 transition duration-300"
+            />
           </div>
         ))}
       </div>

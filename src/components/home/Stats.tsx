@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 export default function Stats() {
   const [stats, setStats] = useState({
@@ -12,47 +10,33 @@ export default function Stats() {
     completionRate: 0,
   });
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     async function fetchStats() {
       try {
-        const usersSnap = await getDocs(collection(db, "users"));
-        const assessmentsSnap = await getDocs(collection(db, "assessments"));
-
-        let totalScore = 0;
-
-        assessmentsSnap.forEach((doc) => {
-          const data = doc.data();
-          if (data.overallScore) {
-            totalScore += data.overallScore;
-          }
-        });
-
-        const avgScore =
-          assessmentsSnap.size > 0
-            ? Math.round(totalScore / assessmentsSnap.size)
-            : 0;
-
-        const completionRate =
-          usersSnap.size > 0
-            ? Math.round((assessmentsSnap.size / usersSnap.size) * 100)
-            : 0;
-
-        setStats({
-          founders: usersSnap.size,
-          assessments: assessmentsSnap.size,
-          avgScore,
-          completionRate,
-        });
+        const res = await fetch("/api/stats");
+  
+        if (!res.ok) {
+          console.error("API failed");
+          return;
+        }
+  
+        const data = await res.json();
+        setStats(data);
+  
       } catch (err) {
         console.error("Stats fetch error:", err);
+      } finally {
+        setLoading(false);
       }
     }
-
+  
     fetchStats();
   }, []);
 
   return (
-    <section className="relative py-36 px-6 border-t border-white/10 bg-black">
+    <section className="relative py-36 px-6 border-t border-white/10">
 
       <div className="max-w-7xl mx-auto">
 
@@ -66,10 +50,10 @@ export default function Stats() {
 
         <div className="grid md:grid-cols-4 gap-8">
 
-          <StatCard number={stats.founders} label="Registered Founders" />
-          <StatCard number={stats.assessments} label="Assessments Completed" />
-          <StatCard number={stats.avgScore} label="Avg Startup Health Score" />
-          <StatCard number={`${stats.completionRate}%`} label="Assessment Completion Rate" />
+          <StatCard number={loading ? "—" : stats.founders} label="Registered Founders" />
+          <StatCard number={loading ? "—" : stats.assessments} label="Assessments Completed" />
+          <StatCard number={loading ? "—" : stats.avgScore} label="Avg Startup Health Score" />
+          <StatCard number={loading ? "—" : `${stats.completionRate}%`} label="Assessment Completion Rate" />
 
         </div>
       </div>
